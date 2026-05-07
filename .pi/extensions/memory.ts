@@ -32,7 +32,7 @@ export default function (pi: ExtensionAPI) {
     const block = `## Memory
 Write to MEMORY.md files to persist context across sessions.
 - Global (~/.pi/agent/MEMORY.md): coding habits, preferences, cross-project knowledge
-- Project (<cwd>/.pi/MEMORY.md): architecture decisions, ongoing work, project conventions
+- Project (${cwd}/.pi/MEMORY.md): architecture decisions, ongoing work, project conventions
 Update when you learn something important or when asked to remember something.
 
 ### Current Memory
