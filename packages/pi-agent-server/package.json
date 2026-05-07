@@ -1,0 +1,54 @@
+{
+	"name": "@mariozechner/pi-agent-server",
+	"version": "0.72.0",
+	"description": "Persistent local agent server managing multiple sessions with multi-client support",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"files": [
+		"dist",
+		"CHANGELOG.md"
+	],
+	"scripts": {
+		"clean": "shx rm -rf dist",
+		"dev": "tsgo -p tsconfig.build.json --watch --preserveWatchOutput",
+		"build": "tsgo -p tsconfig.build.json",
+		"test": "vitest --run",
+		"prepublishOnly": "npm run clean && npm run build"
+	},
+	"dependencies": {
+		"@mariozechner/pi-agent-core": "^0.72.0",
+		"@mariozechner/pi-ai": "^0.72.0",
+		"@mariozechner/pi-coding-agent": "^0.72.0",
+		"ws": "^8.18.2"
+	},
+	"devDependencies": {
+		"@types/node": "^24.3.0",
+		"@types/ws": "^8.18.1",
+		"shx": "^0.4.0",
+		"typescript": "^5.7.3",
+		"vitest": "^3.2.4"
+	},
+	"keywords": [
+		"agent-server",
+		"ai",
+		"llm",
+		"agent"
+	],
+	"author": "Mario Zechner",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/badlogic/pi-mono.git",
+		"directory": "packages/pi-agent-server"
+	},
+	"engines": {
+		"node": ">=20.6.0"
+	}
+}
