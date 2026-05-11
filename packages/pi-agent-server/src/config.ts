@@ -8,8 +8,8 @@ import { join } from "node:path";
 
 /** Configuration for the agent server */
 export interface AgentServerConfig {
-	/** Root workspace directory - all session cwds must be under this path */
-	rootWorkspace: string;
+	/** Default cwd for new sessions when none is specified */
+	defaultCwd: string;
 	/** HTTP port for REST API and WebSocket */
 	port: number;
 	/** Bind address */
@@ -22,7 +22,7 @@ export interface AgentServerConfig {
 
 /** Default configuration values */
 const DEFAULT_CONFIG: AgentServerConfig = {
-	rootWorkspace: join(homedir(), "pi-agent-server-workspace"),
+	defaultCwd: join(homedir(), "pi-agent-server-workspace"),
 	port: 3000,
 	host: "127.0.0.1",
 	agentDir: join(homedir(), ".pi", "agent-server"),
@@ -58,9 +58,9 @@ export function loadConfig(overrides?: Partial<AgentServerConfig>): AgentServerC
 		mkdirSync(config.agentDir, { recursive: true });
 	}
 
-	// Ensure root workspace exists
-	if (!existsSync(config.rootWorkspace)) {
-		mkdirSync(config.rootWorkspace, { recursive: true });
+	// Ensure default cwd exists for sessions without explicit cwd
+	if (!existsSync(config.defaultCwd)) {
+		mkdirSync(config.defaultCwd, { recursive: true });
 	}
 
 	return config;

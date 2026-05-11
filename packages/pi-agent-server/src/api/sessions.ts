@@ -118,9 +118,10 @@ export function createSessionRouter(pool: SessionPool): Router {
 			const body = (await parseBody(req)) as { cwd?: string; name?: string } | undefined;
 			const session = await pool.createSession(body?.cwd, body?.name);
 			json(res, 201, session);
-		} catch (err) {
-			const message = String(err);
-			const status = message.includes("must be under rootWorkspace") ? 400 : 500;
+		} catch (_err) {
+			const message = _err instanceof Error ? _err.message : String(_err);
+			const isBadRequest = message.includes("must be absolute") || message.includes("does not exist");
+			const status = isBadRequest ? 400 : 500;
 			error(res, status, message);
 		}
 	});
@@ -178,23 +179,6 @@ export function createSessionRouter(pool: SessionPool): Router {
 	return router;
 }
 
-/** Create the workspace API router */
-export function createWorkspaceRouter(pool: SessionPool): Router {
-	const router = new Router();
-
-	// GET /api/workspace - get workspace tree
-	router.add("GET", "/api/workspace", async (_req, res) => {
-		try {
-			const tree = await pool.getWorkspaceTree();
-			json(res, 200, tree);
-		} catch (err) {
-			error(res, 500, String(err));
-		}
-	});
-
-	return router;
-}
-
 /** Handle REST API request */
 export async function handleApiRequest(
 	pool: SessionPool,
@@ -203,11 +187,6 @@ export async function handleApiRequest(
 ): Promise<boolean> {
 	if (handleCors(req, res)) return true;
 
-	const routers = [createSessionRouter(pool), createWorkspaceRouter(pool)];
-	for (const router of routers) {
-		const handled = await router.handle(req, res);
-		if (handled) return true;
-	}
-
-	return false;
+	const router = createSessionRouter(pool);
+	return router.handle(req, res);
 }

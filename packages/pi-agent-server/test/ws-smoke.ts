@@ -18,7 +18,7 @@ const tmpDir = mkdtempSync(join(tmpdir(), "pi-agent-server-ws-"));
 const agentDir = join(tmpDir, ".pi-agent-server");
 
 const config: AgentServerConfig = {
-	rootWorkspace: tmpDir,
+	defaultCwd: tmpDir,
 	port: 0,
 	host: "127.0.0.1",
 	agentDir,

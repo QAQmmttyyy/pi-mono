@@ -8,8 +8,10 @@
  * - Event broadcasting to all attached clients
  */
 
-import { readdir, stat, unlink } from "node:fs/promises";
-import { join, relative, resolve } from "node:path";
+import { existsSync } from "node:fs";
+import { unlink } from "node:fs/promises";
+import { homedir } from "node:os";
+import { join, resolve } from "node:path";
 import type { AgentMessage, ThinkingLevel } from "@mariozechner/pi-agent-core";
 import type { Model } from "@mariozechner/pi-ai";
 import { type AgentSession, createAgentSession } from "@mariozechner/pi-coding-agent";
@@ -68,6 +70,12 @@ export interface SessionInfo {
 	subscriberCount: number;
 }
 
+function expandTilde(p: string): string {
+	if (p === "~") return homedir();
+	if (p.startsWith("~/")) return join(homedir(), p.slice(2));
+	return p;
+}
+
 export class SessionPool {
 	private sessions = new Map<string, ActiveSession>();
 	private config: AgentServerConfig;
@@ -84,10 +92,10 @@ export class SessionPool {
 			return active;
 		}
 
-		// Check if a session file exists and is within rootWorkspace
+		// Check if a session file exists
 		const { SessionManager } = await import("@mariozechner/pi-coding-agent");
 		const sessions = await SessionManager.listAll();
-		const info = sessions.find((s) => s.id === sessionId && this._isInWorkspace(s.cwd || ""));
+		const info = sessions.find((s) => s.id === sessionId);
 		if (!info) {
 			throw new Error(`Session ${sessionId} not found`);
 		}
@@ -102,7 +110,19 @@ export class SessionPool {
 
 	/** Create a new session */
 	async createSession(cwd?: string, name?: string): Promise<SessionInfo> {
-		const resolvedCwd = this._resolveCwd(cwd);
+		let resolvedCwd: string;
+		if (cwd) {
+			const expanded = expandTilde(cwd);
+			if (!expanded.startsWith("/")) {
+				throw new Error(`Path must be absolute: "${cwd}"`);
+			}
+			resolvedCwd = resolve(expanded);
+			if (!existsSync(resolvedCwd)) {
+				throw new Error(`Directory does not exist: "${cwd}"`);
+			}
+		} else {
+			resolvedCwd = resolve(this.config.defaultCwd);
+		}
 
 		const { SessionManager } = await import("@mariozechner/pi-coding-agent");
 		const sessionManager = SessionManager.create(resolvedCwd);
@@ -130,7 +150,7 @@ export class SessionPool {
 		// Delete the JSONL file
 		const { SessionManager } = await import("@mariozechner/pi-coding-agent");
 		const sessions = await SessionManager.listAll();
-		const info = sessions.find((s) => s.id === sessionId && this._isInWorkspace(s.cwd || ""));
+		const info = sessions.find((s) => s.id === sessionId);
 		if (info) {
 			try {
 				await unlink(info.path);
@@ -147,10 +167,11 @@ export class SessionPool {
 		return this._toSessionInfo(active);
 	}
 
-	/** List all sessions (active + on-disk, filtered to rootWorkspace) */
+	/** List all sessions (active + on-disk) */
 	async listSessions(): Promise<SessionInfo[]> {
 		const { SessionManager } = await import("@mariozechner/pi-coding-agent");
 		const diskSessions = await SessionManager.listAll();
+		const diskFirstMessages = new Map(diskSessions.filter((s) => s.firstMessage).map((s) => [s.id, s.firstMessage]));
 		const seen = new Set<string>();
 
 		const result: SessionInfo[] = [];
@@ -158,17 +179,16 @@ export class SessionPool {
 		// First add all active sessions
 		for (const [id, active] of this.sessions) {
 			seen.add(id);
-			result.push(this._toSessionInfo(active));
+			result.push(this._toSessionInfo(active, diskFirstMessages.get(id)));
 		}
 
-		// Then add disk sessions not already active, filtered by rootWorkspace
+		// Then add disk sessions not already active
 		for (const info of diskSessions) {
 			if (seen.has(info.id)) continue;
-			if (!this._isInWorkspace(info.cwd || "")) continue;
 			seen.add(info.id);
 			result.push({
 				id: info.id,
-				cwd: info.cwd || this.config.rootWorkspace,
+				cwd: info.cwd || this.config.defaultCwd,
 				name: info.name,
 				lastModified: info.modified.toISOString(),
 				messageCount: info.messageCount,
@@ -180,50 +200,6 @@ export class SessionPool {
 
 		// Sort by last modified descending
 		result.sort((a, b) => b.lastModified.localeCompare(a.lastModified));
-		return result;
-	}
-
-	/** Get workspace directory tree */
-	async getWorkspaceTree(): Promise<WorkspaceNode[]> {
-		return this._scanDir(this.config.rootWorkspace);
-	}
-
-	private async _scanDir(dirPath: string): Promise<WorkspaceNode[]> {
-		const result: WorkspaceNode[] = [];
-		try {
-			const entries = await readdir(dirPath);
-			for (const name of entries) {
-				if (name.startsWith(".")) continue;
-				const fullPath = join(dirPath, name);
-				try {
-					const stats = await stat(fullPath);
-					if (stats.isDirectory()) {
-						const children = await this._scanDir(fullPath);
-						result.push({
-							name,
-							path: fullPath,
-							type: "directory",
-							children: children.length > 0 ? children : undefined,
-						});
-					} else {
-						result.push({
-							name,
-							path: fullPath,
-							type: "file",
-							size: stats.size,
-						});
-					}
-				} catch {
-					// Skip inaccessible entries
-				}
-			}
-		} catch {
-			// Skip inaccessible directories
-		}
-		result.sort((a, b) => {
-			if (a.type !== b.type) return a.type === "directory" ? -1 : 1;
-			return a.name.localeCompare(b.name);
-		});
 		return result;
 	}
 
@@ -417,38 +393,10 @@ export class SessionPool {
 	// Internal helpers
 	// =========================================================================
 
-	private _resolveCwd(cwd?: string): string {
-		if (!cwd) return this.config.rootWorkspace;
-		const resolved = resolve(cwd);
-		const rel = relative(this.config.rootWorkspace, resolved);
-		if (rel.startsWith("..") || resolve(rel) === resolve("/..")) {
-			throw new Error(`cwd "${cwd}" must be under rootWorkspace "${this.config.rootWorkspace}"`);
-		}
-		return resolved;
-	}
-
-	private _isInWorkspace(cwd: string): boolean {
-		if (!cwd) return false;
-		try {
-			const resolved = resolve(cwd);
-			if (resolved === resolve(this.config.rootWorkspace)) return true;
-			const rel = relative(this.config.rootWorkspace, resolved);
-			return !rel.startsWith("..");
-		} catch {
-			return false;
-		}
-	}
-
 	private async _loadSession(sessionPath: string): Promise<ActiveSession> {
 		const { SessionManager } = await import("@mariozechner/pi-coding-agent");
 		const sessionManager = SessionManager.open(sessionPath);
 		const cwd = sessionManager.getCwd();
-
-		// Validate cwd is under rootWorkspace
-		const rel = relative(this.config.rootWorkspace, resolve(cwd));
-		if (rel.startsWith("..") || resolve(rel) === resolve("/..")) {
-			throw new Error(`Session cwd "${cwd}" is outside rootWorkspace "${this.config.rootWorkspace}"`);
-		}
 
 		const result = await createAgentSession({
 			cwd,
@@ -552,15 +500,31 @@ export class SessionPool {
 		this.sessions.delete(active.id);
 	}
 
-	private _toSessionInfo(active: ActiveSession): SessionInfo {
+	private _toSessionInfo(active: ActiveSession, diskFirstMessage?: string): SessionInfo {
 		const s = active.agentSession;
+		let firstMessage = diskFirstMessage;
+		if (firstMessage === undefined) {
+			// Only extract from memory for brand-new sessions not yet on disk
+			const firstUserMsg = s.messages.find((m) => m.role === "user");
+			if (firstUserMsg) {
+				const content = firstUserMsg.content;
+				if (typeof content === "string") {
+					firstMessage = content;
+				} else if (Array.isArray(content)) {
+					firstMessage = content
+						.filter((c): c is { type: "text"; text: string } => c.type === "text")
+						.map((c) => c.text)
+						.join(" ");
+				}
+			}
+		}
 		return {
 			id: s.sessionId,
 			cwd: s.sessionManager.getCwd(),
 			name: s.sessionName,
 			lastModified: new Date(active.lastActivity).toISOString(),
 			messageCount: s.messages.length,
-			firstMessage: "",
+			firstMessage: firstMessage ?? "",
 			isActive: true,
 			subscriberCount: active.subscribers.size,
 		};
@@ -573,12 +537,4 @@ export class SessionPool {
 		}
 		this.sessions.clear();
 	}
-}
-
-export interface WorkspaceNode {
-	name: string;
-	path: string;
-	type: "file" | "directory";
-	size?: number;
-	children?: WorkspaceNode[];
 }

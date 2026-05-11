@@ -1,0 +1,68 @@
+{
+	"name": "@mariozechner/pi-agent-ui",
+	"version": "0.72.0",
+	"description": "Web UI client for pi-agent-server with session management and real-time chat",
+	"type": "module",
+	"scripts": {
+		"dev": "concurrently -n server,ui -c blue,green \"npm run dev:server\" \"npm run dev:ui\"",
+		"dev:ui": "vite",
+		"dev:server": "cd ../pi-agent-server && npx tsx test/dev-server.ts",
+		"build": "tsc -p tsconfig.json --noEmit && vite build",
+		"preview": "vite preview",
+		"storybook": "storybook dev -p 6006",
+		"check": "biome check --write --error-on-warnings . && tsc -p tsconfig.json --noEmit"
+	},
+	"dependencies": {
+		"@mariozechner/pi-agent-core": "^0.72.0",
+		"@mariozechner/pi-ai": "^0.72.0",
+		"@radix-ui/react-avatar": "^1.1.11",
+		"@radix-ui/react-context-menu": "^2.2.16",
+		"@radix-ui/react-dialog": "^1.1.15",
+		"@radix-ui/react-label": "^2.1.8",
+		"@radix-ui/react-popover": "^1.1.15",
+		"@radix-ui/react-scroll-area": "^1.2.10",
+		"@radix-ui/react-select": "^2.2.6",
+		"@radix-ui/react-separator": "^1.1.8",
+		"@radix-ui/react-slot": "^1.2.4",
+		"@radix-ui/react-tooltip": "^1.2.8",
+		"class-variance-authority": "^0.7.1",
+		"clsx": "^2.1.1",
+		"cmdk": "^1.1.1",
+		"lucide-react": "^0.544.0",
+		"marked": "^18.0.3",
+		"react": "^19.1.0",
+		"react-dom": "^19.1.0",
+		"react-markdown": "^10.1.0",
+		"remark-breaks": "^4.0.0",
+		"remark-gfm": "^4.0.1",
+		"shiki": "^4.0.2",
+		"tailwind-merge": "^3.2.0",
+		"use-stick-to-bottom": "^1.1.4"
+	},
+	"devDependencies": {
+		"@tailwindcss/vite": "^4.1.7",
+		"@types/react": "^19.1.8",
+		"@types/react-dom": "^19.1.6",
+		"@vitejs/plugin-react": "^4.6.0",
+		"tailwindcss": "^4.1.7",
+		"typescript": "^5.7.3",
+		"vite": "^6.3.5"
+	},
+	"keywords": [
+		"agent-ui",
+		"ai",
+		"llm",
+		"agent",
+		"chat"
+	],
+	"author": "Mario Zechner",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/badlogic/pi-mono.git",
+		"directory": "packages/pi-agent-ui"
+	},
+	"engines": {
+		"node": ">=20.6.0"
+	}
+}

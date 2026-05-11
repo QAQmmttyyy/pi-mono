@@ -22,7 +22,7 @@ import { createSessionWsServer } from "./ws/session-ws.js";
 
 export type { AgentServerConfig } from "./config.js";
 export { loadConfig } from "./config.js";
-export type { ActiveSession, BashExecResult, SessionInfo, WorkspaceNode } from "./session-pool.js";
+export type { ActiveSession, BashExecResult, SessionInfo } from "./session-pool.js";
 export { SessionPool } from "./session-pool.js";
 
 /**
@@ -60,7 +60,7 @@ export async function startServer(
 	return new Promise((resolve, reject) => {
 		server.listen(config.port, config.host, () => {
 			console.log(`[pi-agent-server] Listening on http://${config.host}:${config.port}`);
-			console.log(`[pi-agent-server] Root workspace: ${config.rootWorkspace}`);
+			console.log(`[pi-agent-server] Default cwd: ${config.defaultCwd}`);
 			console.log(`[pi-agent-server] Agent dir: ${config.agentDir}`);
 
 			resolve({
