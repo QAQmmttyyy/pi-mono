@@ -8,7 +8,7 @@
  * - Event broadcasting to all attached clients
  */
 
-import { existsSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import { unlink } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
@@ -43,6 +43,8 @@ export interface ActiveSession {
 	messageQueue: Array<QueuedMessage>;
 	/** Whether a prompt is currently being processed */
 	isProcessing: boolean;
+	/** Last mtime of session file (detect external changes) */
+	fileMtimeMs: number;
 	/** Timer for idle unload */
 	idleTimer: ReturnType<typeof setTimeout> | undefined;
 	/** When the session was last active */
@@ -418,6 +420,7 @@ export class SessionPool {
 			isProcessing: false,
 			idleTimer: undefined,
 			lastActivity: Date.now(),
+			fileMtimeMs: statSync(sessionPath).mtimeMs,
 		};
 
 		// Subscribe to events for broadcasting
@@ -528,6 +531,27 @@ export class SessionPool {
 			isActive: true,
 			subscriberCount: active.subscribers.size,
 		};
+	}
+
+	/** Reload a session from disk if the file has been externally modified */
+	async refreshIfStale(sessionId: string): Promise<ActiveSession> {
+		const active = this.sessions.get(sessionId);
+		if (!active || active.isProcessing) return active || (await this.getSession(sessionId));
+
+		try {
+			const stats = statSync(active.sessionPath);
+			if (stats.mtimeMs <= active.fileMtimeMs) return active;
+		} catch {
+			return active;
+		}
+
+		// File changed externally, reload from disk
+		const subscribers = active.subscribers;
+		this._unloadSession(active);
+		const reloaded = await this._loadSession(active.sessionPath);
+		reloaded.subscribers = subscribers;
+		reloaded.idleTimer = undefined;
+		return reloaded;
 	}
 
 	/** Shut down the pool, disposing all sessions */

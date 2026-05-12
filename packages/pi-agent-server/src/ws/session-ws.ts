@@ -340,15 +340,20 @@ export function createSessionWsServer(wss: WebSocketServer, pool: SessionPool): 
 
 		// Check if session exists, and if not active, try to load it from disk
 		let active = pool.getActiveSession(sessionId);
+		const handleConnected = (
+			loaded: Awaited<ReturnType<typeof pool.getActiveSession>> | Awaited<ReturnType<typeof pool.getSession>>,
+		) => {
+			if (!loaded) return;
+			active = loaded;
+			const attached = pool.attachClient(loaded.id, ws);
+			setupClient(ws, attached.id, pool);
+			sendInitialState(ws, attached.id, pool);
+		};
+
 		if (!active) {
 			pool
 				.getSession(sessionId)
-				.then((loaded) => {
-					active = loaded;
-					const attached = pool.attachClient(loaded.id, ws);
-					setupClient(ws, attached.id, pool);
-					sendInitialState(ws, attached.id, pool);
-				})
+				.then(handleConnected)
 				.catch((err) => {
 					send(ws, { type: "error", error: String(err) });
 					ws.close(4004, String(err));
@@ -356,9 +361,8 @@ export function createSessionWsServer(wss: WebSocketServer, pool: SessionPool): 
 			return;
 		}
 
-		const attached = pool.attachClient(active.id, ws);
-		setupClient(ws, attached.id, pool);
-		sendInitialState(ws, attached.id, pool);
+		// Session is active, check for external file changes (e.g. from TUI)
+		pool.refreshIfStale(sessionId).then(handleConnected);
 	});
 }
 

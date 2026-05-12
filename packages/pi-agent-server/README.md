@@ -9,7 +9,7 @@ Persistent local agent server managing multiple independent agent sessions, with
 - [Configuration](#configuration)
 - [REST API](#rest-api)
   - [Sessions](#sessions)
-  - [Workspace](#workspace)
+  - [CWD Path Rules](#cwd-path-rules)
 - [WebSocket Protocol](#websocket-protocol)
   - [Connection](#connection)
   - [Client → Server Commands](#client--server-commands)
@@ -28,7 +28,6 @@ import { startServer } from "@mariozechner/pi-agent-server";
 
 const { shutdown, config } = await startServer({
   port: 3000,
-  rootWorkspace: "/path/to/projects",
 });
 
 console.log(`Server at http://localhost:${config.port}`);
@@ -52,7 +51,7 @@ pi login openrouter   # or: anthropic, openai, open-ai-compatible, etc.
 │                                                  │
 │  REST API (:3000/api)     WebSocket              │
 │  • Session CRUD           (:3000/ws/sessions/:id) │
-│  • Workspace tree          • Real-time events     │
+│                            • Real-time events     │
 │                            • Command dispatch     │
 │                                                  │
 │  SessionPool                                      │
@@ -68,9 +67,10 @@ Key concepts:
 
 | Concept | Description |
 |---------|-------------|
-| **Root Workspace** | Configured base directory; all session cwds must be under it |
-| **Session** | An independent `AgentSession` with its own cwd, model, history |
-| **Lazy load** | Sessions load on demand when a client attaches |
+| **Default CWD** | Default working directory `~/pi-agent-server-workspace` for sessions with no explicit cwd |
+| **Session** | An independent `AgentSession` with its own cwd, model, history. No cwd boundary — any directory works. |
+| **Lazy load** | Sessions load from disk on demand when a client attaches |
+| **External change detection** | Attach checks session file mtime; if modified externally (e.g. by TUI), reloads from disk automatically |
 | **Idle unload** | Sessions unload from memory after 30 min with no subscribers |
 | **Serialized prompts** | Per-session message queue ensures ordered prompt execution |
 | **Multi-client broadcast** | All agent events fan out to every attached WebSocket client |
@@ -79,9 +79,9 @@ Key concepts:
 
 ```typescript
 interface AgentServerConfig {
-  /** Root workspace directory — all session cwds must be under this path.
+  /** Default cwd for new sessions when none is specified.
    *  Default: ~/pi-agent-server-workspace */
-  rootWorkspace: string;
+  defaultCwd: string;
 
   /** HTTP port for REST API and WebSocket. Default: 3000 */
   port: number;
@@ -105,7 +105,7 @@ Config is persisted to `<agentDir>/server-config.json`. On restart, the last use
 
 #### `GET /api/sessions`
 
-List all sessions (active + on-disk), filtered by `rootWorkspace`. Sorted by last modified descending.
+List all sessions (active + on-disk). Sorted by last modified descending.
 
 **Response** `200`:
 ```json
@@ -125,6 +125,7 @@ List all sessions (active + on-disk), filtered by `rootWorkspace`. Sorted by las
 
 - `isActive`: `true` when session is loaded in memory
 - `subscriberCount`: number of connected WebSocket clients
+- `firstMessage`: first user message text (used as fallback display title when no name set)
 
 #### `POST /api/sessions`
 
@@ -138,12 +139,12 @@ Create a new session.
 }
 ```
 
-- `cwd` (optional): must be under `rootWorkspace`. Defaults to `rootWorkspace`.
-- `name` (optional): display name
+- `cwd` (optional): absolute path. `~` is expanded. Empty → uses `defaultCwd`. See [CWD Path Rules](#cwd-path-rules).
+- `name` (optional): display name (appended as `session_info` entry)
 
 **Response** `201`: Session info object (see above).
 
-**Errors**: `400` if `cwd` is outside `rootWorkspace`.
+**Errors**: `400` if cwd is not absolute or directory does not exist.
 
 #### `GET /api/sessions/:id`
 
@@ -166,8 +167,6 @@ Get session detail. Returns real-time state for active sessions, disk metadata f
 }
 ```
 
-**Errors**: `404` if session not found in `rootWorkspace`.
-
 #### `DELETE /api/sessions/:id`
 
 Delete session from memory and disk.
@@ -182,26 +181,14 @@ Rename a session.
 
 **Response** `200`: Updated session info.
 
-### Workspace
+### CWD Path Rules
 
-#### `GET /api/workspace`
-
-Get the directory tree of `rootWorkspace`. Skipped entries prefixed with `.`.
-
-**Response** `200`:
-```json
-[
-  {
-    "name": "my-app",
-    "path": "/home/user/projects/my-app",
-    "type": "directory",
-    "children": [
-      { "name": "src", "path": ".../my-app/src", "type": "directory" },
-      { "name": "package.json", "path": ".../my-app/package.json", "type": "file", "size": 1024 }
-    ]
-  }
-]
-```
+| Input | Behavior |
+|-------|----------|
+| Empty / undefined | Uses `defaultCwd` (`~/pi-agent-server-workspace`) |
+| Starts with `/` | Used directly; directory must exist on disk |
+| Starts with `~/` | `~` expanded to home directory, then validated as absolute |
+| Relative / other | Rejected — `400: must be absolute` |
 
 ## WebSocket Protocol
 
@@ -211,7 +198,7 @@ Get the directory tree of `rootWorkspace`. Skipped entries prefixed with `.`.
 ws://localhost:3000/ws/sessions/:id
 ```
 
-On connect, the server automatically sends the session state and full message history. Clients render this as initial context, then subscribe to live events.
+On connect, the server checks if the session file has been externally modified (e.g., by TUI writing new messages). If so, it reloads from disk before sending state. Then it sends the session state and full message history. Clients render this as initial context, then subscribe to live events.
 
 If the session is not yet in memory, it is lazy-loaded from its JSONL file on disk.
 
@@ -291,8 +278,11 @@ The server exposes the `SessionPool` class for programmatic use without starting
 import { SessionPool } from "@mariozechner/pi-agent-server";
 
 const pool = new SessionPool({
-  rootWorkspace: "/home/user/projects",
+  defaultCwd: "/home/user",
   port: 3000,
+  host: "127.0.0.1",
+  agentDir: "~/.pi/agent-server",
+  idleUnloadMs: 30 * 60 * 1000,
 });
 
 // Create a session
@@ -312,8 +302,11 @@ const unsub = active.agentSession.subscribe((event) => {
   }
 });
 
-// List all sessions in workspace
+// List all sessions
 const sessions = await pool.listSessions();
+
+// Check for external changes (e.g., TUI wrote to the same session)
+await pool.refreshIfStale(session.id);
 
 // Cleanup
 await pool.shutdown();
@@ -349,5 +342,3 @@ ws.on("message", (data) => {
 // 3. Forward user message
 ws.send(JSON.stringify({ type: "prompt", message: userMessage }));
 ```
-
-The adapter directory (`src/adapters/`) is reserved for built-in adapter implementations.
