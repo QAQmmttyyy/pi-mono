@@ -1,11 +1,12 @@
 import { useMemo } from "react";
-import type { DisplayMessage, DisplayAssistantMessage } from "../client/types.js";
+import type { DisplayMessage, DisplayAssistantMessage, DisplayCompactionSummary } from "../client/types.js";
 import { cn } from "../utils/cn.js";
 import { Reasoning, ReasoningTrigger, ReasoningContent } from "./ui/reasoning.js";
 import { Markdown } from "./ui/markdown.js";
 import { CodeBlock, CodeBlockCode } from "./ui/code-block.js";
 import { Message } from "./ui/message.js";
 import { ToolCard } from "./ToolCard.js";
+import { CompactionSummary } from "./CompactionSummary.js";
 import { useTheme } from "./ThemeProvider.js";
 
 interface Props {
@@ -29,11 +30,16 @@ export function MessageBubble({ msg }: Props) {
 	if (msg.role === "user") {
 		return (
 			<Message className="justify-end">
-				<div className="bg-primary text-primary-foreground rounded-2xl rounded-br-md max-w-[80%] text-sm px-4 py-2 whitespace-pre-wrap break-words">
+				<div className="bg-primary text-primary-foreground rounded-2xl rounded-br-md text-sm px-4 py-2 whitespace-pre-wrap break-words">
 					{msg.content}
 				</div>
 			</Message>
 		);
+	}
+
+	if (msg.role === "compactionSummary") {
+		const c = msg as DisplayCompactionSummary;
+		return <CompactionSummary summary={c.summary} tokensBefore={c.tokensBefore} />;
 	}
 
 	const asst = msg as DisplayAssistantMessage;
@@ -63,7 +69,7 @@ export function MessageBubble({ msg }: Props) {
 	}), [theme]);
 
 	return (
-		<div className="max-w-[90%] space-y-3">
+		<div className="space-y-3">
 			{asst.thinking && (
 				<Reasoning isStreaming={isStreaming && asst.content === ""}>
 					<ReasoningTrigger className="text-xs text-muted-foreground">

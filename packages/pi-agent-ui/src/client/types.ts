@@ -87,7 +87,11 @@ export interface WsEvent {
 // UI display message (our internal representation)
 // ============================================================================
 
-export type DisplayMessage = DisplayUserMessage | DisplayAssistantMessage | DisplaySystemMessage;
+export type DisplayMessage =
+	| DisplayUserMessage
+	| DisplayAssistantMessage
+	| DisplaySystemMessage
+	| DisplayCompactionSummary;
 
 export interface DisplayUserMessage {
 	id: string;
@@ -104,6 +108,14 @@ export interface DisplayAssistantMessage {
 	tools: DisplayTool[];
 	stopReason?: string;
 	errorMessage?: string;
+	timestamp: number;
+}
+
+export interface DisplayCompactionSummary {
+	id: string;
+	role: "compactionSummary";
+	summary: string;
+	tokensBefore: number;
 	timestamp: number;
 }
 

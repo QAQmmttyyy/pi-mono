@@ -129,3 +129,15 @@ export const SystemError: Story = {
 		},
 	},
 };
+
+export const CompactionSummaryMessage: Story = {
+	args: {
+		msg: {
+			id: "10",
+			role: "compactionSummary",
+			summary: "The user asked about setting up a React project with Vite. The assistant suggested using create-vite, installing dependencies, and configuring Tailwind CSS.",
+			tokensBefore: 15420,
+			timestamp: Date.now(),
+		},
+	},
+};

@@ -8,6 +8,7 @@ import type {
 	DisplayMessage,
 	DisplayAssistantMessage,
 	DisplayTool,
+	DisplayCompactionSummary,
 } from "./client/types.js";
 
 interface SessionContextValue {
@@ -204,6 +205,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 					id: (m as any).id ?? crypto.randomUUID(),
 					role: "assistant", content: "", thinking: undefined, tools: [], timestamp: Date.now(),
 				}]);
+			} else if ((m as any).role === "compactionSummary") {
+				const dm = agentMessageToDisplay(m);
+				if (dm) setMessages((prev) => [...prev, ...(Array.isArray(dm) ? dm : [dm])]);
 			}
 		}
 
@@ -385,5 +389,17 @@ function agentMessageToDisplay(msg: AgentMessage, toolResults?: Map<string, { ou
 			stopReason: (msg as any).stopReason, timestamp: (msg as any).timestamp ?? Date.now(),
 		};
 	}
+
+	if ((msg as any).role === "compactionSummary") {
+		const c = msg as any;
+		return {
+			id: c.id ?? crypto.randomUUID(),
+			role: "compactionSummary" as const,
+			summary: c.summary ?? "",
+			tokensBefore: c.tokensBefore ?? 0,
+			timestamp: c.timestamp ?? Date.now(),
+		} satisfies DisplayCompactionSummary;
+	}
+
 	return null;
 }
