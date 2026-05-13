@@ -47,7 +47,7 @@ export function ChatView() {
 
 			<div className="p-3 shrink-0">
 				<PromptInput
-					className="min-w-fit rounded-xl"
+					className="rounded-xl"
 					isLoading={isStreaming}
 					value={inputValue}
 					onValueChange={setInputValue}
@@ -55,10 +55,8 @@ export function ChatView() {
 				>
 					<PromptInputTextarea placeholder="Send a message..." />
 					<PromptInputActions>
-						<div className="flex items-center gap-2">
-							<ModelSelector />
-							<ThinkingSelector />
-						</div>
+						<ModelSelector />
+						<ThinkingSelector />
 						<div className="flex-1 min-w-2" />
 						{isStreaming ? (
 							<PromptInputAction tooltip="Stop generation">

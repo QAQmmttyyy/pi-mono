@@ -13,7 +13,7 @@ import {
 	CommandItem,
 } from "./ui/command.js";
 import { Button } from "./ui/button.js";
-import { ChevronsUpDown } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 
 export function ModelSelector() {
 	const { state, sendCommand, availableModels, loadModels } = useSession();
@@ -23,9 +23,9 @@ export function ModelSelector() {
 	return (
 		<Popover onOpenChange={(open) => { if (open) loadModels(); }}>
 			<PopoverTrigger asChild>
-				<Button variant="outline" size="sm" className="gap-1.5 h-8">
+				<Button variant="outline" size="sm" className="gap-1.5 h-8 px-1.5 min-w-0 overflow-hidden">
 					<span className="truncate">{label}</span>
-					<ChevronsUpDown className="h-3 w-3 text-muted-foreground shrink-0" />
+					<ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
 				</Button>
 			</PopoverTrigger>
 			<PopoverContent className="w-72 p-0" align="start">
