@@ -55,8 +55,10 @@ export function ChatView() {
 				>
 					<PromptInputTextarea placeholder="Send a message..." />
 					<PromptInputActions>
-						<ModelSelector />
-						<ThinkingSelector />
+						<div className="flex items-center gap-2">
+							<ModelSelector />
+							<ThinkingSelector />
+						</div>
 						<div className="flex-1 min-w-2" />
 						{isStreaming ? (
 							<PromptInputAction tooltip="Stop generation">

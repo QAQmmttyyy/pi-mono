@@ -23,7 +23,7 @@ export function ModelSelector() {
 	return (
 		<Popover onOpenChange={(open) => { if (open) loadModels(); }}>
 			<PopoverTrigger asChild>
-				<Button variant="outline" size="sm" className="gap-1.5 h-8 px-1.5 min-w-0 overflow-hidden">
+				<Button variant="outline" size="sm" className="gap-1.5 h-8">
 					<span className="truncate">{label}</span>
 					<ChevronsUpDown className="h-3 w-3 text-muted-foreground shrink-0" />
 				</Button>

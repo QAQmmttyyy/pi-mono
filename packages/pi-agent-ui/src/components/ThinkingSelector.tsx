@@ -31,7 +31,7 @@ export function ThinkingSelector() {
 
 	return (
 		<Select value={current} onValueChange={(level) => sendCommand({ type: "set_thinking_level", level })}>
-			<SelectTrigger className="h-8 gap-1 px-1.5 min-w-0 overflow-hidden">
+			<SelectTrigger className="h-8 gap-1">
 				<SelectValue />
 			</SelectTrigger>
 			<SelectContent>
