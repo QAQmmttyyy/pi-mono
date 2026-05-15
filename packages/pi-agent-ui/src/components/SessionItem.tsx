@@ -19,7 +19,7 @@ export const SessionItem = forwardRef<HTMLButtonElement, SessionItemProps>(
 				ref={ref}
 				className={cn(
 					"w-full flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors text-left",
-					isActive ? "bg-accent text-accent-foreground" : "hover:bg-accent/50",
+					isActive ? "bg-sidebar-accent-active text-sidebar-accent-foreground" : "hover:bg-sidebar-accent",
 					className,
 				)}
 				{...props}
