@@ -1,0 +1,56 @@
+{
+	"name": "@mariozechner/feishu-bot",
+	"version": "0.72.0",
+	"description": "Feishu bot that connects to pi-agent-server for seamless cross-device AI agent interaction",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"files": [
+		"dist",
+		"CHANGELOG.md"
+	],
+	"scripts": {
+		"clean": "shx rm -rf dist",
+		"build": "tsgo -p tsconfig.build.json",
+		"dev": "tsgo -p tsconfig.build.json --watch",
+		"check": "tsc -p tsconfig.build.json --noEmit",
+		"start": "node dist/index.js",
+		"prepublishOnly": "npm run clean && npm run build"
+	},
+	"bin": {
+		"feishu-bot": "./dist/index.js"
+	},
+	"dependencies": {
+		"@larksuiteoapi/node-sdk": "^1.63.1",
+		"@mariozechner/pi-agent-server": "^0.72.0",
+		"ws": "^8.18.2"
+	},
+	"devDependencies": {
+		"@types/node": "^22.15.3",
+		"typescript": "^5.7.3"
+	},
+	"keywords": [
+		"feishu",
+		"lark",
+		"bot",
+		"ai",
+		"agent",
+		"chat"
+	],
+	"author": "Mario Zechner",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/badlogic/pi-mono.git",
+		"directory": "packages/feishu-bot"
+	},
+	"engines": {
+		"node": ">=20.6.0"
+	}
+}

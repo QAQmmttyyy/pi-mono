@@ -12,7 +12,9 @@
 	],
 	"scripts": {
 		"agent-ui": "npm run dev -w @mariozechner/pi-agent-ui",
+		"agent-ui-ui": "npm run dev:ui -w @mariozechner/pi-agent-ui",
 		"agent-server": "npm run dev:server -w @mariozechner/pi-agent-ui",
+		"feishu-bot": "tsx packages/feishu-bot/src/index.ts",
 		"storybook": "npm run storybook -w @mariozechner/pi-agent-ui",
 		"check:server": "npm run check -w @mariozechner/pi-agent-server",
 		"check:ui": "npm run check -w @mariozechner/pi-agent-ui",

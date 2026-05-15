@@ -420,7 +420,10 @@ export class SessionPool {
 			isProcessing: false,
 			idleTimer: undefined,
 			lastActivity: Date.now(),
-			fileMtimeMs: statSync(sessionPath).mtimeMs,
+			// New sessions may not have a file on disk yet.
+			// createAgentSession generates the path but doesn't write
+			// until data is first flushed.
+			fileMtimeMs: existsSync(sessionPath) ? statSync(sessionPath).mtimeMs : Date.now(),
 		};
 
 		// Subscribe to events for broadcasting
